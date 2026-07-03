@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#c0392b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <title>网易云ncm &rarr; mp3工具</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--red:#e74c3c;--dark-red:#c0392b;--bg1:#1a1a2e;--bg2:#16213e;--bg3:#0f3460;--text:#e0e0e0;--muted:rgba(255,255,255,.45);--card-bg:rgba(255,255,255,.07);--border:rgba(255,255,255,.10);--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
+        html{height:100%;overflow:hidden}
+        body{
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+            background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 50%,var(--bg3) 100%);
+            min-height:100dvh;display:flex;align-items:center;justify-content:center;color:var(--text);
+            -webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+            padding-top:var(--safe-t);padding-bottom:var(--safe-b);touch-action:manipulation;
+        }
+        .bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+        .bg .c{position:absolute;border-radius:50%;opacity:.07;animation:float 18s infinite ease-in-out}
+        .bg .c:nth-child(1){width:320px;height:320px;background:var(--red);top:-100px;left:-80px;animation-delay:0s}
+        .bg .c:nth-child(2){width:400px;height:400px;background:var(--dark-red);bottom:-150px;right:-100px;animation-delay:6s}
+        .bg .c:nth-child(3){width:180px;height:180px;background:#e84393;top:45%;right:10%;animation-delay:12s}
+        @keyframes float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-25px) rotate(180deg)}}
+        .wrap{position:relative;z-index:1;width:92%;max-width:620px;margin:16px auto;max-height:calc(100dvh - 32px - var(--safe-t) - var(--safe-b));display:flex;flex-direction:column}
+        .card{
+            background:var(--card-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+            border:1px solid var(--border);border-radius:22px;padding:36px 32px;
+            box-shadow:0 20px 50px rgba(0,0,0,.35);flex:1;display:flex;flex-direction:column;overflow:hidden;
+        }
+        .hd{text-align:center;margin-bottom:28px;flex-shrink:0}
+        .hd .logo{
+            display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;
+            background:linear-gradient(135deg,var(--red),var(--dark-red));border-radius:16px;margin-bottom:12px;
+            box-shadow:0 8px 28px rgba(231,76,60,.38);font-size:28px;line-height:1;user-select:none;
+        }
+        .hd h1{font-size:24px;font-weight:700;letter-spacing:.3px;margin-bottom:4px}
+        .hd .sub{font-size:13px;color:var(--muted)}
+        .drop{
+            border:2px dashed rgba(255,255,255,.18);border-radius:16px;padding:36px 20px;text-align:center;
+            cursor:pointer;transition:all .28s ease;position:relative;flex-shrink:0;
+            min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        }
+        .drop:hover,.drop:active{border-color:rgba(231,76,60,.55);background:rgba(231,76,60,.04)}
+        .drop.over{border-color:var(--red);background:rgba(231,76,60,.10);transform:scale(1.015)}
+        .drop .upicon{font-size:38px;margin-bottom:8px;opacity:.65;line-height:1}
+        .drop p{font-size:15px;color:rgba(255,255,255,.55);margin-bottom:2px}
+        .drop .tip{font-size:12px;color:rgba(255,255,255,.30)}
+        .drop input[type=file]{display:none}
+        .list-wrap{flex:1;min-height:0;margin-top:16px;overflow:hidden;position:relative}
+        .list{max-height:100%;overflow-y:auto;padding-right:4px;height:100%}
+        .list::-webkit-scrollbar{width:4px}
+        .list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+        .empty-hint{text-align:center;padding:32px 0;color:var(--muted);font-size:13px}
+        .item{
+            display:flex;align-items:center;gap:10px;padding:12px 14px;
+            background:rgba(255,255,255,.05);border-radius:12px;margin-bottom:8px;
+            transition:all .25s ease;animation:slideIn .3s ease;min-height:56px;
+        }
+        @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .item .ficon{font-size:22px;flex-shrink:0;width:28px;text-align:center}
+        .item .finfo{flex:1;min-width:0}
+        .item .fname{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+        .item .fmeta{font-size:11px;color:rgba(255,255,255,.35)}
+        .item .fstat{flex-shrink:0;font-size:12px;padding:5px 14px;border-radius:20px;white-space:nowrap;min-width:64px;text-align:center}
+        .st-wait{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5)}
+        .st-busy{background:rgba(241,196,15,.12);color:#f1c40f;display:flex;align-items:center;gap:6px}
+        .st-ok{background:rgba(46,204,113,.14);color:#2ecc71;cursor:pointer}
+        .st-ok:active{background:rgba(46,204,113,.26)}
+        .st-err{background:rgba(231,76,60,.13);color:var(--red)}
+        .spin{width:14px;height:14px;border:2px solid rgba(241,196,15,.25);border-top-color:#f1c40f;border-radius:50%;animation:spinner .7s linear infinite;flex-shrink:0}
+        @keyframes spinner{to{transform:rotate(360deg)}}
+        .btns{display:flex;gap:10px;margin-top:16px;flex-shrink:0}
+        .btn{
+            flex:1;padding:14px 16px;border:none;border-radius:12px;font-size:15px;font-weight:600;
+            cursor:pointer;transition:all .2s ease;display:flex;align-items:center;justify-content:center;gap:6px;
+            min-height:48px;user-select:none;-webkit-touch-callout:none;
+        }
+        .btn:active{transform:scale(.97)}
+        .btn-pri{background:linear-gradient(135deg,var(--red),var(--dark-red));color:#fff;box-shadow:0 6px 22px rgba(231,76,60,.32)}
+        .btn-pri:active:not(:disabled){box-shadow:0 4px 14px rgba(231,76,60,.42)}
+        .btn-pri:disabled{opacity:.35;cursor:not-allowed}
+        .btn-sec{background:rgba(255,255,255,.08);color:#ccc;border:1px solid var(--border)}
+        .btn-sec:active{background:rgba(255,255,255,.13)}
+        .bar-wrap{margin-top:12px;flex-shrink:0;display:none}
+        .bar{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+        .bar .fill{height:100%;background:linear-gradient(90deg,var(--red),#f39c12);transition:width .3s ease;width:0%}
+        .bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+        .foot{text-align:center;margin-top:16px;font-size:11px;color:rgba(255,255,255,.2);flex-shrink:0;padding-bottom:2px;display:flex;justify-content:center;align-items:center;gap:4px;flex-wrap:wrap}
+        .toast{
+            position:fixed;bottom:calc(30px + var(--safe-b));left:50%;transform:translateX(-50%) translateY(120px);
+            background:rgba(46,204,113,.92);color:#fff;padding:12px 24px;border-radius:14px;
+            font-size:14px;font-weight:500;box-shadow:0 8px 28px rgba(0,0,0,.35);
+            transition:transform .35s cubic-bezier(.34,1.56,.64,1);z-index:9999;
+            max-width:88%;text-align:center;backdrop-filter:blur(8px);
+        }
+        .toast.show{transform:translateX(-50%) translateY(0)}
+        .toast.err{background:rgba(231,76,60,.92)}
+        .pwa-banner{
+            display:none;align-items:center;gap:8px;padding:10px 14px;margin-bottom:16px;
+            background:rgba(46,204,113,.10);border:1px solid rgba(46,204,113,.25);border-radius:12px;
+            font-size:12px;color:#2ecc71;flex-shrink:0;animation:slideIn .3s ease;
+        }
+        .pwa-banner .close{margin-left:auto;background:none;border:none;color:rgba(46,204,113,.6);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+
+        /* --- API 入口 + Modal --- */
+        .api-link{
+            background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.30);color:#ff8a7a;
+            font-size:12px;font-weight:600;
+            cursor:pointer;padding:5px 12px;border-radius:8px;
+            display:inline-flex;align-items:center;gap:5px;
+            transition:all .2s;
+        }
+        .api-link:hover,.api-link:active{background:rgba(231,76,60,.22);color:#fff;border-color:var(--red)}
+        .modal{
+            display:none;position:fixed;inset:0;z-index:10000;
+            background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+            align-items:center;justify-content:center;padding:16px;
+            animation:fadeIn .2s ease;
+        }
+        .modal.show{display:flex}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        .modal-card{
+            background:linear-gradient(135deg,var(--bg1),var(--bg2));
+            border:1px solid var(--border);border-radius:18px;padding:24px;
+            max-width:560px;width:100%;max-height:calc(100dvh - 32px - var(--safe-t) - var(--safe-b));
+            overflow-y:auto;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.5);
+            animation:slideUp .25s cubic-bezier(.34,1.3,.64,1);
+        }
+        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .modal-card::-webkit-scrollbar{width:6px}
+        .modal-card::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+        .modal-close{
+            position:absolute;top:12px;right:12px;width:32px;height:32px;
+            background:rgba(255,255,255,.06);border:none;border-radius:8px;
+            color:var(--text);font-size:22px;cursor:pointer;line-height:1;
+            display:flex;align-items:center;justify-content:center;
+        }
+        .modal-close:active{background:rgba(255,255,255,.12)}
+        .modal-card h2{font-size:20px;margin-bottom:16px;padding-right:36px}
+        .api-row{
+            display:flex;align-items:center;gap:10px;padding:10px 12px;
+            background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:8px;
+            flex-wrap:wrap;
+        }
+        .api-row .method{
+            font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:700;
+            padding:3px 8px;border-radius:6px;flex-shrink:0;
+        }
+        .api-row .method-post{background:rgba(46,204,113,.18);color:#2ecc71}
+        .api-row .method-get{background:rgba(52,152,219,.18);color:#3498db}
+        .api-row code{
+            font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;
+            color:var(--text);flex:1;min-width:0;word-break:break-all;
+        }
+        .api-row .copy-btn{
+            background:rgba(255,255,255,.08);border:1px solid var(--border);
+            color:var(--text);padding:5px 10px;border-radius:7px;cursor:pointer;
+            font-size:12px;flex-shrink:0;transition:all .2s;
+        }
+        .api-row .copy-btn:active{background:rgba(231,76,60,.18);color:var(--red)}
+        .api-row .copy-btn.copied{background:rgba(46,204,113,.2);color:#2ecc71;border-color:rgba(46,204,113,.3)}
+        .api-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+        .api-section h3{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text)}
+        .api-section p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+        .api-section code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#f39c12;background:rgba(0,0,0,.25);padding:2px 6px;border-radius:4px}
+
+        /* --- 移动端适配 --- */
+        @media(max-width:480px){
+            .card{padding:24px 16px;border-radius:18px}
+            .hd h1{font-size:20px}
+            .hd .sub{font-size:12px}
+            .hd{margin-bottom:20px}
+            .drop{padding:28px 16px;min-height:120px}
+            .drop .upicon{font-size:32px}
+            .btns{gap:8px}
+            .btn{padding:13px 12px;font-size:14px;min-height:46px}
+            .item{padding:11px 12px;min-height:52px}
+            .item .fstat{padding:4px 12px;min-width:58px}
+            .foot{margin-top:12px;font-size:10px}
+            .modal{padding:8px}
+            .modal-card{padding:18px;border-radius:14px}
+            .modal-card h2{font-size:17px}
+            .api-row{padding:9px 10px;gap:8px}
+            .api-row code{font-size:12px}
+        }
+        @media(max-width:380px){
+            .card{padding:20px 12px}
+            .hd h1{font-size:18px}
+            .hd .logo{width:50px;height:50px;font-size:24px}
+            .drop{padding:20px 12px;min-height:100px}
+        }
+        @media(display-mode:standalone){
+            .wrap{margin-top:calc(8px + var(--safe-t))}
+            .pwa-banner{display:none !important}
+        }
+        @media(prefers-color-scheme:light){
+            :root{--bg1:#f5f6fa;--bg2:#dcdde1;--bg3:#b2bec3;--text:#2d3436;--muted:rgba(0,0,0,.45);--card-bg:rgba(255,255,255,.65);--border:rgba(0,0,0,.08)}
+            .bg .c{opacity:.04}
+            .btn-sec{color:#555;border-color:rgba(0,0,0,.12);background:rgba(255,255,255,.6)}
+            .drop p{color:rgba(0,0,0,.5)}
+            .foot{color:rgba(0,0,0,.25)}
+        }
+    </style>
+</head>
+<body>
+<div class="bg"><div class="c"></div><div class="c"></div><div class="c"></div></div>
+<div class="wrap">
+    <div class="card">
+        <div class="hd">
+            <div class="logo">&#9835;</div>
+            <h1>网易云ncm &rarr; mp3工具</h1>
+            <div class="sub">上传 .ncm 加密文件，一键解密为 MP3 / FLAC</div>
+        </div>
+
+        <div class="pwa-banner" id="pwaBanner">
+            &#127760; 将此工具添加到主屏幕，体验更佳
+            <button class="close" onclick="dismissPwaBanner()">&times;</button>
+        </div>
+
+        <div class="drop" id="dropzone">
+            <div class="upicon">&#8682;</div>
+            <p>点击或拖拽 .ncm 文件到此处</p>
+            <div class="tip">支持多文件批量转换 &middot; 本地解密，安全无上传</div>
+            <input type="file" id="fileInput" multiple accept=".ncm,.NCM">
+        </div>
+
+        <div class="list-wrap">
+            <div class="list" id="fileList"><div class="empty-hint">暂无文件</div></div>
+        </div>
+
+        <div class="bar-wrap" id="progressWrap">
+            <div class="bar"><div class="fill" id="progressFill"></div></div>
+            <div class="bar-label"><span id="progressLabel">0 / 0</span><span id="progressPct">0%</span></div>
+        </div>
+
+        <div class="btns">
+            <button class="btn btn-sec" onclick="clearAll()">&#10005; 清空</button>
+            <button class="btn btn-sec" onclick="downloadAll()" id="dlAllBtn" disabled>&#8615; 下载全部</button>
+            <button class="btn btn-pri" id="convertBtn" onclick="convertAll()" disabled>&#9889; 开始转换</button>
+        </div>
+
+        <div class="foot">
+            <span>Go + ncmdump 算法 &middot; 完全本地运行</span>
+            <button class="api-link" onclick="showApiModal()">? API</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- API 帮助 Modal -->
+<div class="modal" id="apiModal" onclick="if(event.target===this)closeApiModal()">
+    <div class="modal-card">
+        <button class="modal-close" onclick="closeApiModal()" aria-label="关闭">×</button>
+        <h2>API 文档</h2>
+
+        <div class="api-row">
+            <code style="flex:1" id="apiBaseUrl">http://localhost:8932</code>
+            <button class="copy-btn" onclick="copyText($('apiBaseUrl').textContent, this)">复制</button>
+        </div>
+
+        <div class="api-row">
+            <span class="method method-post">POST</span>
+            <code>/api/convert</code>
+            <button class="copy-btn" onclick="copyText(buildCurl('convert'), this)">复制 cURL</button>
+        </div>
+
+        <div class="api-row">
+            <span class="method method-get">GET</span>
+            <code>/api/download?id=...&name=...</code>
+            <button class="copy-btn" onclick="copyText(buildCurl('download'), this)">复制 cURL</button>
+        </div>
+
+        <div class="api-section">
+            <h3>智能体 / 脚本集成</h3>
+            <p>OpenAPI 3.0 规范：<code id="openapiLink">/api/openapi.json</code></p>
+            <p>Markdown 文档：<a id="docsMdLink" target="_blank" rel="noopener" style="color:#3498db;text-decoration:underline">/api/docs.md</a></p>
+        </div>
+
+        <div class="api-section">
+            <h3>批量处理示例</h3>
+            <p style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:rgba(255,255,255,.6);background:rgba(0,0,0,.25);padding:10px;border-radius:8px;line-height:1.7">
+                # 解密<br>
+                RESP=$(curl -s -X POST \<br>
+                &nbsp;&nbsp;-F "file=@song.ncm" \<br>
+                &nbsp;&nbsp;<span id="bashBase1">http://localhost:8932</span>/api/convert)<br>
+                # 下载<br>
+                ID=$(echo "$RESP" | jq -r .id)<br>
+                NAME=$(echo "$RESP" | jq -r .output_name)<br>
+                curl "<span id="bashBase2">http://localhost:8932</span>/api/download?id=$ID&name=$NAME" -o "$NAME"
+            </p>
+        </div>
+
+        <div class="api-section">
+            <h3>注意事项</h3>
+            <p>• 单文件最大 50MB</p>
+            <p>• 文件 30 分钟后自动清理</p>
+            <p>• 所有接口均开启 CORS，可跨域调用</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- PWA ----------
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+    }
+    // PWA 安装提示（仅非 standalone 模式、未隐藏过且不是 iOS）
+    if (!window.matchMedia('(display-mode: standalone)').matches
+        && !/iPad|iPhone|iPod/.test(navigator.userAgent)
+        && !localStorage.getItem('pwaBannerDismissed')) {
+        window.addEventListener('load', () => {
+            document.getElementById('pwaBanner').style.display = 'flex';
+        });
+    }
+    function dismissPwaBanner() {
+        document.getElementById('pwaBanner').style.display = 'none';
+        localStorage.setItem('pwaBannerDismissed', '1');
+    }
+
+    // ---------- 状态 ----------
+    const state = { items: [], totalCount: 0, doneCount: 0 };
+    const $ = id => document.getElementById(id);
+    const dropzone = $('dropzone');
+    const fileInput = $('fileInput');
+    const fileList = $('fileList');
+    const convertBtn = $('convertBtn');
+    const dlAllBtn = $('dlAllBtn');
+    const progressWrap = $('progressWrap');
+    const progressFill = $('progressFill');
+    const progressLabel = $('progressLabel');
+    const progressPct = $('progressPct');
+    const toast = $('toast');
+
+    // ---------- 拖拽 ----------
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('touchstart', () => {}, {passive: true});
+
+    let dragCounter = 0;
+    document.addEventListener('dragenter', e => {
+        e.preventDefault();
+        dragCounter++;
+        if (dragCounter === 1) dropzone.classList.add('over');
+    });
+    document.addEventListener('dragleave', e => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter === 0) dropzone.classList.remove('over');
+    });
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => {
+        e.preventDefault();
+        dragCounter = 0;
+        dropzone.classList.remove('over');
+        addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+
+    // ---------- 文件管理 ----------
+    function addFiles(files) {
+        let added = 0;
+        for (const f of files) {
+            if (!f.name.toLowerCase().endsWith('.ncm')) continue;
+            state.items.push({ file: f, status: 'wait', id: null, outName: null, err: null });
+            added++;
+        }
+        if (added > 0 && navigator.vibrate) navigator.vibrate(10);
+        render();
+    }
+
+    function render() {
+        if (state.items.length === 0) {
+            fileList.innerHTML = '<div class="empty-hint">暂无文件</div>';
+        } else {
+            fileList.innerHTML = '';
+            state.items.forEach((item, i) => {
+                const d = document.createElement('div'); d.className = 'item';
+                const mb = (item.file.size / 1024 / 1024).toFixed(1);
+                let icon = '', statHtml = '';
+                if (item.status === 'wait') { icon = '&#127925;'; statHtml = '<span class="fstat st-wait">等待中</span>'; }
+                else if (item.status === 'busy') { icon = '&#127925;'; statHtml = '<div class="spin"></div>'; }
+                else if (item.status === 'ok') { icon = '&#9989;'; statHtml = `<span class="fstat st-ok" onclick="downloadOne(${i})">&#8615; 下载</span>`; }
+                else if (item.status === 'err') { icon = '&#10060;'; statHtml = `<span class="fstat st-err">失败</span>`; }
+                d.innerHTML = `<div class="ficon">${icon}</div><div class="finfo"><div class="fname" title="${item.file.name}">${item.file.name}</div><div class="fmeta">${mb} MB${item.err ? ' &middot; ' + item.err : ''}</div></div>${statHtml}`;
+                fileList.appendChild(d);
+            });
+        }
+        convertBtn.disabled = state.items.length === 0 || state.items.some(i => i.status === 'busy');
+        dlAllBtn.disabled = !state.items.some(i => i.status === 'ok');
+    }
+
+    // ---------- 转换 ----------
+    async function convertAll() {
+        const pending = state.items.filter(i => i.status === 'wait' || i.status === 'err');
+        if (pending.length === 0) return;
+        state.totalCount = pending.length;
+        state.doneCount = 0;
+        progressWrap.style.display = 'block';
+        updateProgress();
+        convertBtn.disabled = true;
+
+        for (let idx = 0; idx < pending.length; idx++) {
+            const item = pending[idx];
+            item.status = 'busy'; item.err = null;
+            render();
+            // 更新进度标签显示当前正在处理的文件
+            progressLabel.textContent = `正在处理 (${idx + 1}/${pending.length})`;
+
+            try {
+                const fd = new FormData();
+                fd.append('file', item.file);
+                const resp = await fetch('/api/convert', { method: 'POST', body: fd });
+                const data = await resp.json();
+                if (data.error) { item.status = 'err'; item.err = data.error; }
+                else { item.status = 'ok'; item.id = data.id; item.outName = data.output_name; }
+            } catch (e) { item.status = 'err'; item.err = '网络错误'; }
+
+            state.doneCount++;
+            updateProgress();
+            render();
+        }
+
+        convertBtn.disabled = false;
+        const hasOk = state.items.some(i => i.status === 'ok');
+        const hasFail = state.items.some(i => i.status === 'err');
+        if (hasOk && !hasFail) {
+            showToast('全部转换完成！');
+            progressWrap.style.display = 'none';
+        } else if (hasFail && !hasOk) {
+            showToast('转换失败，请重试', true);
+            setTimeout(() => progressWrap.style.display = 'none', 1500);
+        } else {
+            showToast('转换完成（部分失败）', true);
+            setTimeout(() => progressWrap.style.display = 'none', 1500);
+        }
+    }
+
+    function updateProgress() {
+        if (state.totalCount === 0) return;
+        const pct = Math.round((state.doneCount / state.totalCount) * 100);
+        progressFill.style.width = pct + '%';
+        progressPct.textContent = pct + '%';
+        const done = state.items.filter(i => i.status === 'ok' || i.status === 'err').length;
+        progressLabel.textContent = `${done} / ${state.items.length}`;
+    }
+
+    // ---------- 下载 ----------
+    function downloadOne(i) {
+        const item = state.items[i];
+        if (!item.id || !item.outName) return;
+        const a = document.createElement('a');
+        a.href = `/api/download?id=${item.id}&name=${encodeURIComponent(item.outName)}`;
+        a.download = item.outName;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+
+    async function downloadAll() {
+        const okItems = state.items.filter(i => i.status === 'ok');
+        for (let i = 0; i < okItems.length; i++) {
+            const item = okItems[i];
+            const idx = state.items.indexOf(item);
+            setTimeout(() => downloadOne(idx), i * 400);
+        }
+        showToast(`已开始下载 ${okItems.length} 个文件`);
+    }
+
+    // ---------- 清空 ----------
+    function clearAll() {
+        state.items = [];
+        state.totalCount = 0; state.doneCount = 0;
+        progressWrap.style.display = 'none';
+        progressFill.style.width = '0%';
+        render();
+    }
+
+    // ---------- Toast ----------
+    let toastTimer;
+    function showToast(msg, isErr) {
+        toast.textContent = msg;
+        toast.className = 'toast' + (isErr ? ' err' : '');
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    // ---------- API Modal ----------
+    function showApiModal() {
+        const base = window.location.origin;
+        $('apiBaseUrl').textContent = base;
+        $('openapiLink').textContent = '/api/openapi.json';
+        $('docsMdLink').href = '/api/docs.md';
+        $('docsMdLink').textContent = '/api/docs.md';
+        $('bashBase1').textContent = base;
+        $('bashBase2').textContent = base;
+        $('apiModal').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeApiModal() {
+        $('apiModal').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeApiModal(); });
+
+    function buildCurl(kind) {
+        const base = window.location.origin;
+        if (kind === 'convert') {
+            return `curl -X POST -F "file=@<file>" ${base}/api/convert`;
+        }
+        return `curl "${base}/api/download?id=<id>&name=<name>" -o <name>`;
+    }
+
+    async function copyText(text, btn) {
+        let ok = false;
+        try {
+            await navigator.clipboard.writeText(text);
+            ok = true;
+        } catch (e) {
+            // 回退：临时 textarea + execCommand
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try { ok = document.execCommand('copy'); } catch (_) {}
+            document.body.removeChild(ta);
+        }
+        if (ok && btn) {
+            const orig = btn.textContent;
+            btn.textContent = '已复制';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+        } else {
+            showToast('复制失败，请手动复制', true);
+        }
+    }
+</script>
+</body>
+</html>

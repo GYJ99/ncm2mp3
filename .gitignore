@@ -1,0 +1,14 @@
+# 编译产物
+#ncm-tool
+#dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+.claude
